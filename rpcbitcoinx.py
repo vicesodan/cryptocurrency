@@ -1,18 +1,21 @@
 import requests
-import asyncio
+import pandas as pd
+import pandas_datareader as pdr
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 from bitcoinrpc import BitcoinRPC
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
-from datetime import datetime
-import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
 from tkinter import *
 from tkinter import scrolledtext
-from PIL import ImageTk, Image 
+from PIL import ImageTk, Image
 
 
 canvas = Tk()
 canvas.geometry("1000x600")
 canvas.title("BitcoinStats")
 canvas.iconbitmap('C:/Users/vices/Desktop/bitcoin.ico')
+
 
 rpc_connection = AuthServiceProxy("http://%s:%s@blockchain.oss.unist.hr:8332"%(rpc_user, rpc_password))
 
@@ -30,9 +33,9 @@ def trenutna_cijena():
     label1 = Label(image=test)
     label1.image = test
     label1.place(x=380, y=250)
-    labelTitle.config(text = "Cijena Bitcoina", font = f1)
+    labelTitle.config(text = "Bitcoin price", font = f1)
     labelPrice.config(text = str(price) + "$")
-    labelTime.config(text = "Vrijeme: " + time)
+    labelTime.config(text = "Time: " + time)
     
     canvas.after(600, trenutna_cijena)
 
@@ -41,43 +44,74 @@ def blockinfo():
     best_block_hash = rpc_connection.getbestblockhash()
     info=rpc_connection.getblock(best_block_hash)
     labelTitle.config(text = "Best block hash", font = f1)
-    labelTime.config(text = 'Hash = ' + info['hash'] + '\nMerkleroot = ' + str(info['merkleroot'] + '\nVersion = ' + str(info['version'])))
+    labelTime.config(text = 'Hash = ' + info['hash'] + '\nMerkleroot = ' + str(info['merkleroot']) + '\nVersion = ' + str(info['version']))
 
+    
 def transactions():
 
-    labelPrice.config(text = "Popis transakcija:")
-    scrText=scrolledtext.ScrolledText(canvas, wrap=WORD)
-    scrText.pack()
+    labelPrice.config(text = "Transaction list:")
+    text = Text(canvas, cursor="arrow")
+    vsb = Scrollbar(canvas, command=text.yview)
+    text.configure(yscrollcommand=vsb.set)
+
+    vsb.pack(side="right", fill="y")
+    text.pack(side="left", fill="both", expand=True)
 
     trans = rpc_connection.getrawmempool()
-    scrText.insert('insert', trans) 
-    scrText.config(state=DISABLED)
+    buttons=[]
+    vars=[]
+    for i in trans:
+        var = IntVar(value=0)
+        b= Button(text, text=i, pady=5, padx=300, command=click)
+        b.pack()
+        text.window_create("end", window=b)
+        text.insert("end", "\n")
+        buttons.append(b)
+        vars.append(var)
+    text.configure(state="disabled")
+
+def click():
+    top= Toplevel()
+    size=rpc_connection.getrawmempool()
+    for i in size:
+        txid = rpc_connection.getrawtransaction(i, True)
+    lbl = Label(top, text= 'Transaction info:'+ '\n\nHash = ' + txid['hash'] + '\nTxid = ' + str(txid['txid']) + '\nVsize = ' + str(txid['vsize']), font=f3).pack()
 
 def graf():
-    #PRIMJER NEKOG GRAFA
-    # x axis values
-    x = [1,2,3,4,5,6]
-    # corresponding y axis values
-    y = [2,4,1,5,2,6]
+    CRYPTO = 'BTC'
+    CURRENCY = 'USD'
+
+    now = datetime.now()
+    current_date = now.strftime("%Y-%m-%d")
+    last_year_date = (now - timedelta(days=365)).strftime("%Y-%m-%d")
+
+    start = pd.to_datetime(last_year_date)
+    end = pd.to_datetime(current_date)
+
+    crypto_data = pdr.get_data_yahoo(f'{CRYPTO}-{CURRENCY}', start, end)
+
+    fig = go.Figure(
+    data = [
+        go.Scatter(
+            x = crypto_data.index, 
+            y = crypto_data.Close.rolling(window=20).mean(),
+            mode = 'lines', 
+            name = '20SMA',
+            line = {'color': '#ff006a'}
+        ),
+        ]
+    )
+
+    fig.update_layout(
+    title = f'The price graph for {CRYPTO}',
+    xaxis_title = 'Date',
+    yaxis_title = f'Price ({CURRENCY})',
+    xaxis_rangeslider_visible = True
+    )
+    fig.update_yaxes(tickprefix='$')
+
+    fig.show()
     
-    # plotting the points 
-    plt.plot(x, y, color='red', linestyle='dashed', linewidth = 3,
-             marker='o', markerfacecolor='red', markersize=12)
-    
-    # setting x and y axis range
-    plt.ylim(1,8)
-    plt.xlim(1,8)
-    
-    # naming the x axis
-    plt.xlabel('x - axis')
-    # naming the y axis
-    plt.ylabel('y - axis')
-    
-    # giving a title to my graph
-    plt.title('Bitcoin price')
-    
-    # function to show the plot
-    plt.show()
 
 
 
@@ -90,10 +124,10 @@ labelTitle = Label(canvas, font=f1)
 labelTitle.pack(pady=20)
 
 labelPrice = Label(canvas, font=f2)
-labelPrice.pack(pady=20)
+labelPrice.pack(pady=10)
 
 labelTime = Label(canvas, font=f3)
-labelTime.pack(pady=20)
+labelTime.pack(pady=10)
 
 my_menu = Menu(canvas)
 canvas.config(menu=my_menu)
@@ -103,10 +137,10 @@ blockchain = Menu(my_menu)
 popist = Menu(my_menu)
 ggraf = Menu(my_menu)
 
-my_menu.add_cascade(label="Cijena", command=trenutna_cijena)
-my_menu.add_cascade(label="BlockInfo", command=blockinfo)
-my_menu.add_cascade(label="Popis transakcija", command=transactions)
-my_menu.add_cascade(label="Graf", command=graf)
+my_menu.add_cascade(label="Price",  command=trenutna_cijena)
+my_menu.add_cascade(label="Block info", command=blockinfo)
+my_menu.add_cascade(label="Transaction list", command=transactions)
+my_menu.add_cascade(label="BTC price graph", command=graf)
 
 
 canvas.mainloop()
