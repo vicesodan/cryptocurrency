@@ -19,39 +19,54 @@ canvas.iconbitmap('C:/Users/vices/Desktop/bitcoin.ico')
 
 rpc_connection = AuthServiceProxy("http://%s:%s@blockchain.oss.unist.hr:8332"%(rpc_user, rpc_password))
 
-def clearFrame(widget):
-    widget.forget()
+def clearFrame():
+    for widget in frame1.winfo_children():
+        widget.destroy()
+
+    for widget in frame2.winfo_children():
+        widget.destroy()
+
+    for widget in frame3.winfo_children():
+        widget.destroy()
+
+    frame1.pack_forget()
+    frame2.pack_forget()
+    frame3.pack_forget()
+
 
 def trenutna_cijena():
-    
+    clearFrame()
+    frame1.pack(fill="both", expand=1)
     url="https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD,JPY,EUR&api_key=06efcda2677d688ac20177063ed6af2a3e341d19db249029ec66e7072c6f932c"
     response = requests.get(url).json()
     price = response["USD"]
     time=datetime.now().strftime("%H:%M:%S")
     image1 = Image.open("C:/Users/vices/Desktop/bitcoin.ico")
     test = ImageTk.PhotoImage(image1)
-    label1 = Label(image=test)
+    label1 = Label(frame1, image=test)
     label1.image = test
     label1.place(x=380, y=250)
-    labelTitle.config(text = "Bitcoin price", font = f1)
-    labelPrice.config(text = str(price) + "$")
-    labelTime.config(text = "Time: " + time)
+    label= Label(frame1, text = "Bitcoin price", font = f1).pack(pady=20)
+    label= Label(frame1, text = str(price) + "$", font = f2).pack(pady=10)
+    label= Label(frame1, text = "Time: " + time, font = f3).pack(pady=10)
+    b= Button(frame1, text = "Refresh!", pady=5, padx=10, command=trenutna_cijena, bg="#f7931a").pack()
     
-    canvas.after(600, trenutna_cijena)
 
 def blockinfo():
-
+    clearFrame()
+    frame2.pack(fill="both", expand=1)
     best_block_hash = rpc_connection.getbestblockhash()
     info=rpc_connection.getblock(best_block_hash)
-    labelTitle.config(text = "Best block hash", font = f1)
-    labelTime.config(text = 'Hash = ' + info['hash'] + '\nMerkleroot = ' + str(info['merkleroot']) + '\nVersion = ' + str(info['version']))
+    label= Label(frame2, text = "Best block hash", font = f1).pack(pady=20)
+    label= Label(frame2, text = 'Hash = ' + info['hash']+ '\n\nDifficulty = ' + str(info['difficulty'])+ '\nNonce = ' + str(info['nonce'])+ '\nConfirmations = ' + str(info['confirmations'])+ '\nVersion = ' + str(info['version']) + '\nMerkleroot = ' + str(info['merkleroot']) + '\n\nPreviousBlockHash = \n' + info['previousblockhash'], font = f3).pack()
 
     
 def transactions():
-
-    labelPrice.config(text = "Transaction list:")
-    text = Text(canvas, cursor="arrow")
-    vsb = Scrollbar(canvas, command=text.yview)
+    clearFrame()
+    frame3.pack(fill="both", expand=1)
+    label= Label(frame3, text = "Transaction list:", font = f2).pack(pady=10)
+    text = Text(frame3, cursor="arrow")
+    vsb = Scrollbar(frame3, command=text.yview)
     text.configure(yscrollcommand=vsb.set)
 
     vsb.pack(side="right", fill="y")
@@ -75,7 +90,8 @@ def click():
     size=rpc_connection.getrawmempool()
     for i in size:
         txid = rpc_connection.getrawtransaction(i, True)
-    lbl = Label(top, text= 'Transaction info:'+ '\n\nHash = ' + txid['hash'] + '\nTxid = ' + str(txid['txid']) + '\nVsize = ' + str(txid['vsize']), font=f3).pack()
+    lbl = Label(top, text= 'Transaction info:', font=f1).pack()
+    lbl = Label(top, text= '\n\nHash = ' + txid['hash'] + '\nTxid = ' + str(txid['txid'])+ '\nSize = ' + str(txid['size']) + '\nVsize = ' + str(txid['vsize'])+ '\nWeight = ' + str(txid['weight']), font=f3).pack()
 
 def graf():
     CRYPTO = 'BTC'
@@ -120,29 +136,28 @@ f2=("poppins", 22, "bold")
 f3=("poppins", 18, "normal")
 
 
-labelTitle = Label(canvas, font=f1)
-labelTitle.pack(pady=20)
-
-labelPrice = Label(canvas, font=f2)
-labelPrice.pack(pady=10)
-
-labelTime = Label(canvas, font=f3)
-labelTime.pack(pady=10)
-
 my_menu = Menu(canvas)
 canvas.config(menu=my_menu)
 
 pocetna = Menu(my_menu)
+opcije = Menu(my_menu)
 blockchain = Menu(my_menu)
 popist = Menu(my_menu)
-ggraf = Menu(my_menu)
 
-my_menu.add_cascade(label="Price",  command=trenutna_cijena)
+
+
+my_menu.add_cascade(label="BTC Price",  menu=opcije)
+opcije.add_command(label="BTC Current price", command=trenutna_cijena)
+opcije.add_command(label="BTC Price graph", command=graf)
 my_menu.add_cascade(label="Block info", command=blockinfo)
 my_menu.add_cascade(label="Transaction list", command=transactions)
-my_menu.add_cascade(label="BTC price graph", command=graf)
 
 
+frame1=Frame(canvas, width=1000, height=600)
+frame2=Frame(canvas, width=1000, height=600)
+frame3=Frame(canvas, width=1000, height=600)
+
+trenutna_cijena()
 canvas.mainloop()
 
 
