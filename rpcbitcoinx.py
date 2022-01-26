@@ -1,3 +1,5 @@
+#Desktop app for Bitcoin stats, done for college
+
 import requests
 import pandas as pd
 import pandas_datareader as pdr
@@ -16,7 +18,7 @@ canvas.geometry("1000x600")
 canvas.title("BitcoinStats")
 canvas.iconbitmap('C:/Users/vices/Desktop/bitcoin.ico')
 
-
+#Connection is missing login data
 rpc_connection = AuthServiceProxy("http://%s:%s@blockchain.oss.unist.hr:8332"%(rpc_user, rpc_password))
 
 def clearFrame():
